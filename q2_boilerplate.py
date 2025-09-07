@@ -153,8 +153,6 @@ class Parser:
     def expression(self):
         if self.peek() and self.peek()[0] in (TokenType.IDENTIFIER, TokenType.INTEGER, TokenType.FLOAT):
             self.advance()
-        else:
-            raise SyntaxError("SyntaxError: Missing condition statement")
             
     def match(self, token_type, token_value=None):
         # consumes the token as well
@@ -193,10 +191,11 @@ if __name__ == "__main__":
         source_code = input("Enter a statement: ")
         tokens = tokenize(source_code)
 
+        logs = checkGrammar(tokens)
+        
         for token in tokens:
             print(f"Token Type: {token[0]}, Token Value: {token[1]}")
-
-        logs = checkGrammar(tokens)
+        
         print("Syntax check passed.")
 
     except (ValueError, SyntaxError) as e:

@@ -1,14 +1,9 @@
-# q2.py
-# Implementation for Question 2: Compiler with Tokenization and CFG Parsing
-
 import re
 import sys
 
-# PART 1: TOKENIZATION (LEXICAL ANALYSIS)
-# =================================================
+# tokenization
 
 class Token:
-    """A simple class to hold token information."""
     def __init__(self, type, value):
         self.type = type
         self.value = value
@@ -17,22 +12,8 @@ class Token:
         return f"Token(type='{self.type}', value='{self.value}')"
 
 def tokenize(source_code):
-    """
-    Performs lexical analysis on the source code string.
-    
-    Args:
-        source_code (str): The single line of code to be tokenized.
-        
-    Returns:
-        list[Token]: A list of tokens.
-        
-    Raises:
-        ValueError: If an unrecognized pattern (lexical error) is found.
-    """
-    # Token specification using regular expressions.
-    # The order is important to handle the keyword vs. identifier hierarchy.
-    # Keywords are matched before general identifiers.
     token_specs = [
+        ('INVALID',   r'\d+[a-zA-Z_][a-zA-Z0-9_]*'),
         # -- Keywords (prioritized over identifiers)
         ('KEYWORD', r'\b(if|else|print)\b'),
         # -- Numbers (Float before Integer to handle cases like 2.0)
@@ -42,50 +23,37 @@ def tokenize(source_code):
         ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
         # -- Symbols / Operators
         ('SYMBOL', r'[+\-*/^<>=;]'),
-        # -- Miscellaneous
+        # misc
         ('NEWLINE', r'\n'),
-        ('SKIP', r'[ \t]+'),  # To ignore whitespace
+        ('SKIP', r'[ \t]+'),
     ]
     
     # Combine all regex patterns into one
     token_regex = '|'.join('(?P<%s>%s)' % spec for spec in token_specs)
-    
     tokens = []
     position = 0
     while position < len(source_code):
-        match = re.match(token_regex, source_code, position)
-        
+        remaining_string = source_code[position:]
+        match = re.match(token_regex, remaining_string)
         if not match:
-            # If no pattern matches, it's a lexical error
             invalid_char = source_code[position]
-            raise ValueError(f"LexicalError: Invalid character '{invalid_char}' at position {position}")
+            raise ValueError(f"Error: Invalid character '{invalid_char}' at position {position}")
             
         token_type = match.lastgroup
         token_value = match.group(token_type)
+        if token_type == 'INVALID':
+            raise ValueError(f"ValueError: Invalid identifier: {token_value}\nIdentifier can't start with digits")
         
-        if token_type == 'NEWLINE' or token_type == 'SKIP':
-            # Ignore whitespace and newlines
-            pass
-        else:
+        if token_type != 'SKIP':
             tokens.append(Token(token_type, token_value))
-
-        position = match.end()
         
-    # Check for identifiers starting with a digit, which regex might miss if not crafted perfectly
-    for token in tokens:
-        if token.type == 'IDENTIFIER' and token.value[0].isdigit():
-            raise ValueError(f"ValueError: Invalid identifier: {token.value}\nIdentifier can't start with digits")
+        position = position + match.end()
 
     return tokens
 
-# PART 2: SYNTACTIC ANALYSIS (PARSING)
-# =================================================
+# syntactic (parsing)
 
 class Parser:
-    """
-    Performs syntactic analysis on a list of tokens based on the given CFG.
-    This is a simple recursive descent parser.
-    """
     def __init__(self, tokens):
         self.tokens = tokens
         self.current_pos = 0
@@ -186,29 +154,20 @@ class Parser:
 def main():
     """Main function to run the compiler."""
     try:
-        # [cite_start]Get input statement [cite: 165]
         input_statement = input("Enter a statement: ")
         
-        # 1. Lexical Analysis
         tokens = tokenize(input_statement)
         
-        # 2. Syntactic Analysis
         parser = Parser(tokens)
         parser.parse()
         
-        # [cite_start]3. Output on Success [cite: 170]
-        print("\n--- No Errors ---")
         for token in tokens:
             print(f"Token Type: {token.type}, Token Value: {token.value}")
             
     except ValueError as ve:
-        # [cite_start]Catch Lexical Errors [cite: 174]
-        print(f"\n--- Lexical Error ---", file=sys.stderr)
         print(str(ve), file=sys.stderr)
         
     except SyntaxError as se:
-        # [cite_start]Catch Syntactic Errors [cite: 178]
-        print(f"\n--- Syntactic Error ---", file=sys.stderr)
         print(str(se), file=sys.stderr)
         
     except Exception as e:

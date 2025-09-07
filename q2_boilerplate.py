@@ -131,7 +131,6 @@ class Parser:
             self.simple_statement()
 
     def if_statement(self):
-        """Parses an if statement: if (A) (statement) [else (statement)]"""
         self.condition()
         self.simple_statement()
         if self.match(TokenType.KEYWORD, 'else'):
@@ -170,46 +169,33 @@ class Parser:
         return True
 
     def peek(self):
-        """Returns the current token without consuming it."""
         if not self.is_at_end():
             return self.tokens[self.current_pos]
         return None
 
     def advance(self):
-        """Consumes the current token and moves to the next."""
         if not self.is_at_end():
             self.current_pos += 1
         return self.tokens[self.current_pos - 1]
 
     def is_at_end(self):
-        """Checks if we have run out of tokens to parse."""
         return self.current_pos >= len(self.tokens)
 
 def checkGrammar(tokens):
-    """
-    Initializes the Parser and runs the syntactic analysis.
-    Returns logs or raises errors.
-    """
     if not tokens:
         return "No tokens to parse."
     parser = Parser(tokens)
     return parser.parse()
 
-
-# Main execution block
+# Test the tokenizer
 if __name__ == "__main__":
     try:
         source_code = input("Enter a statement: ")
-        # 1. Lexical Analysis
         tokens = tokenize(source_code)
 
-        # Print tokens if lexical analysis is successful
-        print("\n--- Tokens ---")
         for token in tokens:
             print(f"Token Type: {token[0]}, Token Value: {token[1]}")
-        print("--------------\n")
 
-        # 2. Syntactic Analysis
         logs = checkGrammar(tokens)
         print("Syntax check passed.")
 

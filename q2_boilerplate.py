@@ -137,20 +137,22 @@ class Parser:
             self.simple_statement()
 
     def simple_statement(self):
+        #after if statement, we check statements inside it
         if self.match(TokenType.KEYWORD, 'else'):
             raise SyntaxError("SyntaxError: Missing condition after 'if' statement")
         while not self.is_at_end() and self.peek()[1] not in ('if', 'else'):
             self.advance()
 
     def condition(self):
-        """Parses a condition: cond -> x [op x]"""
-        self.expression() # First 'x'
-        # Check for optional operator and second 'x'
+        #
+        self.expression() #first operand
+        # check for operator and second operand
         if self.peek() and self.peek()[0] == TokenType.SYMBOL and self.peek()[1] in ('<', '>', '='):
             self.advance()
             self.expression()
 
     def expression(self):
+        #if an expression is seen, we advance without doing anything
         if self.peek() and self.peek()[0] in (TokenType.IDENTIFIER, TokenType.INTEGER, TokenType.FLOAT):
             self.advance()
             
@@ -167,16 +169,19 @@ class Parser:
         return True
 
     def peek(self):
+        #returns the token at current position
         if not self.is_at_end():
             return self.tokens[self.current_pos]
         return None
 
     def advance(self):
+        #go to next position
         if not self.is_at_end():
             self.current_pos += 1
         return self.tokens[self.current_pos - 1]
 
     def is_at_end(self):
+        #if position reacher EOF or not
         return self.current_pos >= len(self.tokens)
 
 def checkGrammar(tokens):

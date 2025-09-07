@@ -112,98 +112,78 @@ def tokenize(source_code):
 ########################## BOILERPLATE ENDS ###########################
 
 class Parser:
-    """
-    Implements a recursive descent parser for the given grammar.
-
-    The grammar provided in the PDF is ambiguous. This parser follows the logical
-    structure implied by the examples: an 'if' statement consists of a condition,
-    a 'then' block (a simple statement), and an optional 'else' block.
-    """
     def __init__(self, tokens):
         self.tokens = tokens
-        self.pos = 0
-        # Pre-emptive check for 'else' without a preceding 'if'
-        if_seen = False
-        for token_type, token_value in tokens:
-            if token_value == 'if':
-                if_seen = True
-            if token_value == 'else' and not if_seen:
-                raise SyntaxError("'else' occurs before 'if'")
-
-
-    def current_token(self):
-        if self.pos < len(self.tokens):
-            return self.tokens[self.pos]
-        return (TokenType.EOF, '')
-
-    def advance(self):
-        self.pos += 1
+        self.current_pos = 0
 
     def parse(self):
-        """Starts the parsing process."""
-        while self.current_token()[0] != TokenType.EOF:
+        if not self.tokens:
+            return
+        while not self.is_at_end(): # statement -> (statement)(statement)
             self.statement()
-        return "Parsing successful."
 
     def statement(self):
-        """Parses a statement, which can be an if-statement or a simple one."""
-        token_type, token_value = self.current_token()
-        if token_type == TokenType.KEYWORD and token_value == 'if':
+        if self.match(TokenType.KEYWORD, 'if'):
             self.if_statement()
+        elif self.match(TokenType.KEYWORD, 'else'):
+            raise SyntaxError("SyntaxError: 'else' occurs before 'if'")
         else:
-            self.simple_statement() # Corresponds to 'y' in the grammar
+            self.simple_statement()
 
     def if_statement(self):
-        """Parses an if-statement: 'if' condition statement ('else' statement)?"""
-        # Consume 'if'
-        self.advance()
-
-        # Parse condition
+        """Parses an if statement: if (A) (statement) [else (statement)]"""
         self.condition()
-
-        # Parse 'then' statement
-        self.statement()
-
-        # Check for optional 'else'
-        token_type, token_value = self.current_token()
-        if token_type == TokenType.KEYWORD and token_value == 'else':
-            # Consume 'else'
-            self.advance()
-            # Parse 'else' statement
-            self.statement()
-
-    def condition(self):
-        """Parses a condition: x (op x)?"""
-        self.x() # Parse the first operand
-        # Check for an operator
-        token_type, token_value = self.current_token()
-        if token_type == TokenType.SYMBOL and token_value in "+-*^<>|=":
-            self.advance() # Consume operator
-            self.x() # Parse the second operand
-
-    def x(self):
-        """Parses an 'x' which can be an identifier or a number."""
-        token_type, _ = self.current_token()
-        if token_type in [TokenType.IDENTIFIER, TokenType.INTEGER, TokenType.FLOAT, TokenType.SYMBOL]:
-            self.advance()
-        else:
-            # It could also be another condition, creating recursion.
-            # This part is ambiguous in the grammar, but for simplicity we assume
-            # x is a terminal token for now based on examples.
-            raise SyntaxError(f"Unexpected token in expression: {self.current_token()[1]}")
+        self.simple_statement()
+        if self.match(TokenType.KEYWORD, 'else'):
+            self.simple_statement()
 
     def simple_statement(self):
-        """
-        Parses a 'y' statement. Consumes tokens until a keyword or EOF is found.
-        This rule is based on the note that Σ_statement includes keywords,
-        numbers, identifiers, but not operators inside a statement block like 'print'.
-        """
-        while True:
-            token_type, token_value = self.current_token()
-            if token_type == TokenType.EOF or (token_type == TokenType.KEYWORD and token_value in ['if', 'else']):
-                break
+        if self.match(TokenType.KEYWORD, 'else'):
+            raise SyntaxError("SyntaxError: Missing condition after 'if' statement")
+        while not self.is_at_end() and self.peek()[1] not in ('if', 'else'):
             self.advance()
 
+    def condition(self):
+        """Parses a condition: cond -> x [op x]"""
+        self.expression() # First 'x'
+        # Check for optional operator and second 'x'
+        if self.peek() and self.peek()[0] == TokenType.SYMBOL and self.peek()[1] in ('<', '>', '='):
+            self.advance()
+            self.expression()
+
+    def expression(self):
+        if self.peek() and self.peek()[0] in (TokenType.IDENTIFIER, TokenType.INTEGER, TokenType.FLOAT):
+            self.advance()
+        else:
+            raise SyntaxError("SyntaxError: Missing condition statement")
+            
+    def match(self, token_type, token_value=None):
+        # consumes the token as well
+        if self.is_at_end():
+            return False
+        token = self.peek()
+        if token[0] != token_type:
+            return False
+        if token_value is not None and token[1] != token_value:
+            return False
+        self.advance()
+        return True
+
+    def peek(self):
+        """Returns the current token without consuming it."""
+        if not self.is_at_end():
+            return self.tokens[self.current_pos]
+        return None
+
+    def advance(self):
+        """Consumes the current token and moves to the next."""
+        if not self.is_at_end():
+            self.current_pos += 1
+        return self.tokens[self.current_pos - 1]
+
+    def is_at_end(self):
+        """Checks if we have run out of tokens to parse."""
+        return self.current_pos >= len(self.tokens)
 
 def checkGrammar(tokens):
     """

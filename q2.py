@@ -2,7 +2,6 @@ import re
 import sys
 
 # tokenization
-
 class Token:
     def __init__(self, type, value):
         self.type = type
@@ -14,21 +13,21 @@ class Token:
 def tokenize(source_code):
     token_specs = [
         ('INVALID',   r'\d+[a-zA-Z_][a-zA-Z0-9_]*'),
-        # -- Keywords (prioritized over identifiers)
+        # keywords (prioritized over identifiers)
         ('KEYWORD', r'\b(if|else|print)\b'),
-        # -- Numbers (Float before Integer to handle cases like 2.0)
+        # numbers (float before integer)
         ('FLOAT', r'\-?\d+\.\d+'),
         ('INTEGER', r'\-?\d+'),
-        # -- Identifiers
+        # identifiers
         ('IDENTIFIER', r'[a-zA-Z_][a-zA-Z0-9_]*'),
-        # -- Symbols / Operators
+        # symbols & operators
         ('SYMBOL', r'[+\-*/^<>=;]'),
-        # misc
+        # then we need line change and spacess
         ('NEWLINE', r'\n'),
         ('SKIP', r'[ \t]+'),
     ]
     
-    # Combine all regex patterns into one
+    # more efficient than the provided boilerplate
     token_regex = '|'.join('(?P<%s>%s)' % spec for spec in token_specs)
     tokens = []
     position = 0
@@ -52,22 +51,19 @@ def tokenize(source_code):
     return tokens
 
 # syntactic (parsing)
-
 class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.current_pos = 0
         self.if_count = 0
 
-    def parse(self):
+    def checkGrammar(self):
         if not self.tokens:
             return
-        self.statement()
-        if not self.is_at_end():
-            raise SyntaxError(f"SyntaxError: Unexpected token '{self.peek().value}' after a complete statement.")
+        while not self.is_at_end(): # statement -> (statement)(statement)
+            self.statement()
 
     def statement(self):
-        """Parses a statement rule: S -> if... | y"""
         if self.match('KEYWORD', 'if'):
             self.if_statement()
         elif self.match('KEYWORD', 'else'):
@@ -76,22 +72,18 @@ class Parser:
             self.simple_statement()
 
     def if_statement(self):
-        """Parses an if statement: if (A) (statement) [else (statement)]"""
         self.condition()
-        self.statement()
+        self.simple_statement()
         if self.match('KEYWORD', 'else'):
-            self.statement()
+            self.simple_statement()
 
     def simple_statement(self):
-        """
-        Parses a simple statement 'y', which is a sequence of non-structural tokens.
-        We consume tokens until we hit a structural keyword or the end.
-        """
+        if self.match('KEYWORD', 'else'):
+            raise SyntaxError("SyntaxError: Missing condition after 'if' statement")
         while not self.is_at_end() and self.peek().value not in ('if', 'else'):
             self.advance()
 
     def condition(self):
-        """Parses a condition: cond -> x [op x]"""
         self.expression() # First 'x'
         # Check for optional operator and second 'x'
         if self.peek() and self.peek().type == 'SYMBOL' and self.peek().value in ('<', '>', '='):
@@ -102,7 +94,7 @@ class Parser:
         if self.peek() and self.peek().type in ('IDENTIFIER', 'INTEGER', 'FLOAT'):
             self.advance()
         else:
-            raise SyntaxError("SyntaxError: Missing condition after 'if' statement")
+            raise SyntaxError("SyntaxError: Missing condition statement")
             
     def match(self, token_type, token_value=None):
         # consumes the token as well
@@ -117,33 +109,26 @@ class Parser:
         return True
 
     def peek(self):
-        """Returns the current token without consuming it."""
         if not self.is_at_end():
             return self.tokens[self.current_pos]
         return None
 
     def advance(self):
-        """Consumes the current token and moves to the next."""
         if not self.is_at_end():
             self.current_pos += 1
         return self.tokens[self.current_pos - 1]
 
     def is_at_end(self):
-        """Checks if we have run out of tokens to parse."""
         return self.current_pos >= len(self.tokens)
 
-# MAIN EXECUTION BLOCK
-# =================================================
-
 def main():
-    """Main function to run the compiler."""
     try:
         input_statement = input("Enter a statement: ")
         
         tokens = tokenize(input_statement)
         
         parser = Parser(tokens)
-        parser.parse()
+        parser.checkGrammar()
         
         for token in tokens:
             print(f"Token Type: {token.type}, Token Value: {token.value}")

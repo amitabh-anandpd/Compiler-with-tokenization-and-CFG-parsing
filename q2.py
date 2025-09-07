@@ -57,13 +57,12 @@ class Parser:
     def __init__(self, tokens):
         self.tokens = tokens
         self.current_pos = 0
+        self.if_count = 0
 
     def parse(self):
-        """Starts the parsing process."""
         if not self.tokens:
-            return # An empty input is syntactically valid.
+            return
         self.statement()
-        # After a full statement, we should be at the end of the token list.
         if not self.is_at_end():
             raise SyntaxError(f"SyntaxError: Unexpected token '{self.peek().value}' after a complete statement.")
 
@@ -72,14 +71,12 @@ class Parser:
         if self.match('KEYWORD', 'if'):
             self.if_statement()
         elif self.match('KEYWORD', 'else'):
-            # This is a specific error case mentioned in the assignment
             raise SyntaxError("SyntaxError: 'else' occurs before 'if'")
         else:
             self.simple_statement()
 
     def if_statement(self):
         """Parses an if statement: if (A) (statement) [else (statement)]"""
-        # The 'if' token is already consumed by self.match()
         self.condition()
         self.statement()
         if self.match('KEYWORD', 'else'):
@@ -98,30 +95,17 @@ class Parser:
         self.expression() # First 'x'
         # Check for optional operator and second 'x'
         if self.peek() and self.peek().type == 'SYMBOL' and self.peek().value in ('<', '>', '='):
-            self.advance() # Consume operator
-            self.expression() # Second 'x'
+            self.advance()
+            self.expression()
 
     def expression(self):
-        """Parses an expression 'x', which can be a number, identifier, etc."""
-        # This grammar allows a very simple expression: a single terminal.
         if self.peek() and self.peek().type in ('IDENTIFIER', 'INTEGER', 'FLOAT'):
             self.advance()
         else:
-            # Handle potential expression chains like '2+xi'
-            while self.peek() and self.peek().type in ('IDENTIFIER', 'INTEGER', 'FLOAT', 'SYMBOL'):
-                # Avoid consuming operators that delimit a condition
-                if self.peek().value in ('<', '>', '='):
-                    break
-                self.advance()
-                if self.is_at_end():
-                    break
+            raise SyntaxError("SyntaxError: Missing condition after 'if' statement")
             
-    # --- Helper Methods ---
     def match(self, token_type, token_value=None):
-        """
-        Checks if the current token matches the expected type and value.
-        If it matches, consumes the token and returns True.
-        """
+        # consumes the token as well
         if self.is_at_end():
             return False
         token = self.peek()

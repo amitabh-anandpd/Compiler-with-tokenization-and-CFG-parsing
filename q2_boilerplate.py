@@ -147,9 +147,11 @@ class Parser:
         #
         self.expression() #first operand
         # check for operator and second operand
-        if self.peek() and self.peek()[0] == TokenType.SYMBOL and self.peek()[1] in ('<', '>', '='):
+        if self.peek() and self.peek()[0] == TokenType.SYMBOL and self.peek()[1] in ('<', '>', '=', '_'):
             self.advance()
             self.expression()
+        elif self.peek() and self.peek()[0] == TokenType.SYMBOL and self.peek()[0] not in ('<', '>', '='):
+            raise SyntaxError("SyntaxError: Wrong expression")
 
     def expression(self):
         #if an expression is seen, we advance without doing anything
